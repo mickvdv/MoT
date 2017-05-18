@@ -1,104 +1,168 @@
 format long g
 
 % simulation parameters
-N = 10;
+N = 100;
+% for loading the basket
+filename = 'basket.xlsx';
 
-% load basket from excel file
-
-% environmental variables
-q = 0.0275;
-sig = 0.3; % per year
-T = 10;
+% Load the most recent risk free interpolation
+load('rfr.mat', 'risk_free_rate_interpolation');
+global risk_free_rate_interpolation;
 
 % product specifications
 premium = 150;
 global payments_per_year;
 payments_per_year = 12;
-participation_rate = 0.75;
-cap_rate = 1.15; % on yearly basis
+participation_rate = 0.875;
+cap_rate = 1.075; % on yearly basis
+T = 10;
+dT = 1/payments_per_year;
 
-% initialization
-S0 = 100;
-StockPath = zeros(N, T*payments_per_year+1);
-StockPath(:, 1) = S0;
+% load the basket
+% Array contents: (S0, sig, null, null, q)
+basket = xlsread(filename)
+basket_size = size(basket, 1);
 
-% simulate stock path
-for sim_i = 1:N
-    for month_i = 2:(T*payments_per_year)+1
-%         This is the simulation of the next stock price
-        r = RiskFreeRateInterpolation(10);
-        StockPath(sim_i, month_i) = normrnd(StockPath(sim_i, month_i-1)*exp(r*(1/payments_per_year)), sig);
+% calculate the call prices
+CallPrices = zeros(basket_size, T*payments_per_year);
+CallAmounts = zeros(basket_size, T*payments_per_year);
+
+for stock_i = 1 : basket_size
+%     for each stock
+    S0 = basket(stock_i, 1);
+    sig = basket(stock_i, 2);
+    q = basket(stock_i, 5);
+
+    for month_i = 1:(T/dT)
+        sim_T = T - (month_i - 1) * dT;
+        r = RiskFreeRateInterpolation(sim_T);
+        StockPaths = SimulateStockPaths(S0, sim_T, dT, r - q, sig, N);
+        
+%         get the expected values of the calls
+        ExpectedLongCallValue = ExpectedCallValueFromStockPaths(StockPaths, S0, sim_T, dT, N);
+        K_short = S0 +  ((cap_rate - 1) * sim_T) * S0;
+        ExpectedShortCallValue = ExpectedCallValueFromStockPaths(StockPaths, K_short, sim_T, dT, N);
+        
+        amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
+        
+%         save prices and amounts
+        CallPrices(stock_i, month_i) = ExpectedLongCallValue * amount_of_stock - ExpectedShortCallValue * amount_of_stock;
+        CallAmounts(stock_i, month_i) = amount_of_stock;
+        
+%         prepare next simulation step
+        S0 = ExpectedValueFromStockPaths(StockPaths, dT, dT, N);     
     end
 end
 
-% simulate the call prices
-CallPrices = zeros(N, T*payments_per_year);
-ShortStrikes = zeros(N, T*payments_per_year);
-LongStrikes = zeros(N, T*payments_per_year);
-CallAmounts = zeros(N, T*payments_per_year);
+% Calculate the bonds
+BondPrices = 150 - sum(CallPrices, 1);
+BondFaceValues = zeros(1, (T/dT));
 
-for sim_i = 1:N
-    for month_i = 1:(T*payments_per_year)
-        t = T - ((month_i-1) * (1/payments_per_year));
-        r = RiskFreeRateInterpolation(t);
-        
-        amount_of_stock = (premium * participation_rate) / StockPath(sim_i, month_i);
-        CallAmounts(sim_i, month_i) = amount_of_stock;
-        
-        K_long = StockPath(sim_i, month_i);
-        call_long = bsm_call(r, q, StockPath(sim_i, month_i), StockPath(sim_i, month_i), t, sig);
-        LongStrikes(sim_i, month_i) = K_long;
-        
-        K_short = StockPath(sim_i, month_i) +  ((cap_rate - 1) * t) * StockPath(sim_i, month_i);
-        ShortStrikes(sim_i, month_i) = K_short;
-        call_short = bsm_call(r, q, StockPath(sim_i, month_i), K_short, t, sig);
-        
-        
-        CallPrices(sim_i, month_i) = call_long * amount_of_stock - call_short * amount_of_stock;
-    end
+for month_i = 1:(T/dT)
+    sim_T = T - (month_i - 1) * dT;
+    r = RiskFreeRateInterpolation(sim_T);
+    BondFaceValues(1, month_i) = BondPrices(1, month_i) * exp(r * sim_T);
 end
 
-% simulate the bond prices
-BondPrices = zeros(N, T*payments_per_year);
-BondFaceValues = zeros(N, T*payments_per_year);
+% Protection
+Protection = sum(BondFaceValues, 2);
+ProtectionRate = Protection / (premium * payments_per_year * T)
 
-for sim_i = 1:N
-    for month_i = 1:(T*payments_per_year)
-        t = T - ((month_i-1) * (1/payments_per_year));
-        r = RiskFreeRateInterpolation(t);
-        
-%         use whatever money is left to buy the bond
-        left_over = premium - CallPrices(sim_i, month_i);
-        BondFaceValues(sim_i, month_i) = left_over * exp(r * t);
-        BondPrices(sim_i, month_i) = BondFaceValues(sim_i, month_i) * exp(-r * t);
-        
-    end
+% CallPrices
+
+
+
+% 
+% 
+% % simulate the call prices
+% CallPrices = zeros(N, T*payments_per_year);
+% ShortStrikes = zeros(N, T*payments_per_year);
+% LongStrikes = zeros(N, T*payments_per_year);
+% CallAmounts = zeros(N, T*payments_per_year);
+% 
+% for sim_i = 1:N
+%     for month_i = 1:(T*payments_per_year)
+%         t = T - ((month_i-1) * (1/payments_per_year));
+%         r = RiskFreeRateInterpolation(t);
+%         
+%         amount_of_stock = (premium * participation_rate) / StockPath(sim_i, month_i);
+%         CallAmounts(sim_i, month_i) = amount_of_stock;
+%         
+%         K_long = StockPath(sim_i, month_i);
+%         call_long = bsm_call(r, q, StockPath(sim_i, month_i), StockPath(sim_i, month_i), t, sig);
+%         LongStrikes(sim_i, month_i) = K_long;
+%         
+%         K_short = StockPath(sim_i, month_i) +  ((cap_rate - 1) * t) * StockPath(sim_i, month_i);
+%         ShortStrikes(sim_i, month_i) = K_short;
+%         call_short = bsm_call(r, q, StockPath(sim_i, month_i), K_short, t, sig);
+%         
+%         
+%         CallPrices(sim_i, month_i) = call_long * amount_of_stock - call_short * amount_of_stock;
+%     end
+% end
+% 
+% % simulate the bond prices
+% BondPrices = zeros(N, T*payments_per_year);
+% BondFaceValues = zeros(N, T*payments_per_year);
+% 
+% for sim_i = 1:N
+%     for month_i = 1:(T*payments_per_year)
+%         t = T - ((month_i-1) * (1/payments_per_year));
+%         r = RiskFreeRateInterpolation(t);
+%         
+% %         use whatever money is left to buy the bond
+%         left_over = premium - CallPrices(sim_i, month_i);
+%         BondFaceValues(sim_i, month_i) = left_over * exp(r * t);
+%         BondPrices(sim_i, month_i) = BondFaceValues(sim_i, month_i) * exp(-r * t);
+%         
+%     end
+% end
+% 
+% 
+% % Now we have the products bought, we can calculate the payoff
+% PayOff = zeros(N, 1);
+% 
+% for sim_i = 1:N
+%     PayOff(sim_i) = sum(BondFaceValues(sim_i, :),2);
+%     final_value_of_stock = StockPath(sim_i, T*payments_per_year+1);
+%     for month_i = 1:(T*payments_per_year)
+%         PayOff(sim_i) = PayOff(sim_i) + CallAmounts(sim_i, month_i) * (max(0, final_value_of_stock - LongStrikes(sim_i, month_i)) - max(0, final_value_of_stock - ShortStrikes(sim_i, month_i)));
+%     end
+% end
+% 
+% % Reporting
+% PortfolioPrices = BondPrices + CallPrices;
+% % disp(['Total price of the porfolio ' num2str(sum(PortfolioPrices, 2))]);
+% % disp(['Principal that is protected ' num2str(sum(BondFaceValues, 2))]);
+% % disp(['Customer premium ' num2str(payments_per_year * T * premium)]);
+% disp(['Protection rate: ' num2str(sum(BondFaceValues(1,:),2)/(payments_per_year * T * premium))]);
+% 
+% 
+% % plot(risk_free_rate);
+
+function e = ExpectedCallValueFromStockPaths(StockPaths, K, forwardT, dT, N)
+    t_index = round(forwardT/dT);
+    call_values = max(StockPaths(:, t_index) - K, 0);
+    e = sum(call_values)/N;
 end
 
-
-% Now we have the products bought, we can calculate the payoff
-PayOff = zeros(N, 1);
-
-for sim_i = 1:N
-    PayOff(sim_i) = sum(BondFaceValues(sim_i, :),2);
-    final_value_of_stock = StockPath(sim_i, T*payments_per_year+1);
-    for month_i = 1:(T*payments_per_year)
-        PayOff(sim_i) = PayOff(sim_i) + CallAmounts(sim_i, month_i) * (max(0, final_value_of_stock - LongStrikes(sim_i, month_i)) - max(0, final_value_of_stock - ShortStrikes(sim_i, month_i)));
-    end
+function e = ExpectedValueFromStockPaths(StockPaths, forwardT, dT, N)
+    t_index = round(forwardT/dT) + 1;
+    col_sum = sum(StockPaths, 1);
+    e = col_sum(t_index)/N;
 end
+    
 
-% Reporting
-PortfolioPrices = BondPrices + CallPrices;
-% disp(['Total price of the porfolio ' num2str(sum(PortfolioPrices, 2))]);
-% disp(['Principal that is protected ' num2str(sum(BondFaceValues, 2))]);
-% disp(['Customer premium ' num2str(payments_per_year * T * premium)]);
-disp(['Protection rate: ' num2str(sum(BondFaceValues(1,:),2)/(payments_per_year * T * premium))]);
-
-
-% plot(risk_free_rate);
-
-function StockPath(S0, T, mu, sig)
-   
+function StockPaths = SimulateStockPaths(S0, T, dT, mu, sig, N)
+%    http://www.investopedia.com/articles/07/montecarlo.asp
+    t_size = round(T/dT);
+    StockPaths = zeros(N, t_size);
+    StockPaths(:, 1) = S0;
+    for sim_i = 1:N
+        for step_i = 2:(T/dT) + 1 %(plus 1 is for the last month)
+            StockPaths(sim_i, step_i) = max(StockPaths(sim_i, step_i - 1) + (StockPaths(sim_i, step_i - 1) * (mu * dT + sig * normrnd(0,1) * sqrt(dT))), 0);
+        end
+    end           
 end
 
 
@@ -115,29 +179,10 @@ end
 
 
 function r = RiskFreeRateInterpolation(t)
+    global risk_free_rate_interpolation;
     global payments_per_year;
-    % Risk free rate interpolation
-    risk_free_rate = zeros(1, 20 * payments_per_year);
-    risk_free_rate(:,:) = NaN;
-    risk_free_rate(20*payments_per_year) = 2.71;
-    risk_free_rate(10*payments_per_year) = 2.33;
-    risk_free_rate(7*payments_per_year) = 2.13;
-    risk_free_rate(5*payments_per_year) = 1.84;
-    risk_free_rate(3*payments_per_year) = 1.48;
-    risk_free_rate(2*payments_per_year) = 1.28;
-    risk_free_rate(1*payments_per_year) = 1.09;
-    risk_free_rate(0.5*payments_per_year) = 0.98;
-    risk_free_rate(0.25*payments_per_year) = 0.83;
-    risk_free_rate((1/12)*payments_per_year) = 0.67;
-
-    idxValid = ~isnan(risk_free_rate);
-
-    x = linspace(1,20*12,20*12);
-    p = polyfit(x(idxValid),risk_free_rate(idxValid),3);
-
-    risk_free_rate_interpolation = polyval(p,x);
     t_in_months = round( t * payments_per_year);
-    r = risk_free_rate_interpolation(t_in_months)/100;
+    r = risk_free_rate_interpolation(t_in_months);
 end
 
 
