@@ -1,13 +1,14 @@
 format long g
 
 % simulation parameters
-N = 50;
+N = 1000
 
 % for loading the basket
 filename = 'basket.xlsx';
 
 % Load the most recent risk free interpolation
 load('rfr.mat', 'risk_free_rate_interpolation');
+global risk_free_rate_interpolation;
 
 % product specifications
 premium = 150;
@@ -28,9 +29,9 @@ ParticipationRates = 0.2:0.025:1.2;
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
 
 for cap_i = 1:size(CapRates,2)
-    cap_rate = CapRates(1, cap_i);
+    cap_rate = CapRates(1, cap_i)
     for participation_i = 1:size(ParticipationRates, 2)
-        participation_rate = ParticipationRates(participation_i);
+        participation_rate = ParticipationRates(participation_i)
         % calculate the call prices
         CallPrices = zeros(basket_size, T*payments_per_year);
         CallAmounts = zeros(basket_size, T*payments_per_year);
@@ -74,9 +75,17 @@ for cap_i = 1:size(CapRates,2)
 
         % Protection
         Protection = sum(BondFaceValues, 2);
-        ProtectionRates(cap_i, participation_i) = Protection / (premium * payments_per_year * T);
+        protection_rate = Protection / (premium * payments_per_year * T)
+        ProtectionRates(cap_i, participation_i) = protection_rate;
     end
 end
+
+hold on
+surf(ParticipationRates, CapRates, ProtectionRates);
+title('Protection Rate');
+ylabel('Cap Rate');
+xlabel('Participation Rate');
+hold off
 
 
 function e = ExpectedCallValueFromStockPaths(StockPaths, K, forwardT, dT, N)
