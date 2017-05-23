@@ -1,7 +1,7 @@
 format long g
 
 % simulation parameters
-N = 1000
+N = 20;
 
 % for loading the basket
 filename = 'basket.xlsx';
@@ -44,12 +44,14 @@ for cap_i = 1:size(CapRates,2)
 
             for month_i = 1:(T/dT)
                 sim_T = T - (month_i - 1) * dT;
+%                 sim_T = time left till maturity
                 r = RiskFreeRateInterpolation(sim_T);
-                StockPaths = SimulateStockPaths(S0, sim_T, dT, r - q, sig, N);
+                r_stock = RiskFreeRateInterpolation(3/12);
+                StockPaths = SimulateStockPaths(S0, sim_T, dT, r_stock - q, sig, N);
 
         %         get the expected values of the calls
                 ExpectedLongCallValue = ExpectedCallValueFromStockPaths(StockPaths, S0, sim_T, dT, N);
-                K_short = S0 +  ((cap_rate - 1) * sim_T) * S0;
+                K_short = S0 * cap_rate ^ (sim_T);
                 ExpectedShortCallValue = ExpectedCallValueFromStockPaths(StockPaths, K_short, sim_T, dT, N);
 
                 amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
