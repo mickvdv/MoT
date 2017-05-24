@@ -20,7 +20,17 @@ idxValid = ~isnan(risk_free_rate);
 x = linspace(1,20*12,20*12);
 p = polyfit(x(idxValid),risk_free_rate(idxValid),3);
 
-risk_free_rate_interpolation = polyval(p,x)/100;
+risk_free_rate_interpolation = polyval(p,x);
 
+figure;
+plot(x,risk_free_rate,'o','DisplayName','Risk-free rate yield'); 
+hold on;
+plot(x,risk_free_rate_interpolation,'DisplayName','Fitted Yield Curve');
+xlabel('T (in years)');
+ylabel('Rate (in %)');
+hold off;
+
+legend('show')
+risk_free_rate_interpolation = risk_free_rate_interpolation/100;
 save('rfr.mat', 'risk_free_rate_interpolation');
 

@@ -1,14 +1,13 @@
 format long g
 
 % simulation parameters
-N = 20;
+N = 1000; % number of paths in Monte Carlo
 
 % for loading the basket
 filename = 'basket.xlsx';
 
 % Load the most recent risk free interpolation
 load('rfr.mat', 'risk_free_rate_interpolation');
-global risk_free_rate_interpolation;
 
 % product specifications
 premium = 150;
@@ -24,8 +23,7 @@ basket_size = size(basket, 1);
 
 CapRates = 1:0.025:1.5;
 ParticipationRates = 0.2:0.025:1.2;
-
-
+r_stock = RiskFreeRateInterpolation(3/12);
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
 
 for cap_i = 1:size(CapRates,2)
@@ -46,21 +44,21 @@ for cap_i = 1:size(CapRates,2)
                 sim_T = T - (month_i - 1) * dT;
 %                 sim_T = time left till maturity
                 r = RiskFreeRateInterpolation(sim_T);
-                r_stock = RiskFreeRateInterpolation(3/12);
-                StockPaths = SimulateStockPaths(S0, sim_T, dT, r_stock - q, sig, N);
-
+                
         %         get the expected values of the calls
-                ExpectedLongCallValue = ExpectedCallValueFromStockPaths(StockPaths, S0, sim_T, dT, N);
+                ExpectedLongCallValue = bsm_call(r, q, S0, S0, sim_T, sig);
                 K_short = S0 * cap_rate ^ (sim_T);
-                ExpectedShortCallValue = ExpectedCallValueFromStockPaths(StockPaths, K_short, sim_T, dT, N);
+                ExpectedShortCallValue = bsm_call(r, q, S0, K_short, sim_T, sig);
 
                 amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
+                
 
         %         save prices and amounts
                 CallPrices(stock_i, month_i) = ExpectedLongCallValue * amount_of_stock - ExpectedShortCallValue * amount_of_stock;
                 CallAmounts(stock_i, month_i) = amount_of_stock;
 
-        %         prepare next simulation step
+        %         calculated the expected value for next month
+                StockPaths = SimulateStockPaths(S0, dT, dT, r_stock - q, sig, N);
                 S0 = ExpectedValueFromStockPaths(StockPaths, dT, dT, N);     
             end
         end
@@ -103,7 +101,6 @@ function e = ExpectedValueFromStockPaths(StockPaths, forwardT, dT, N)
     e = col_sum(t_index)/N;
 end
     
-
 function StockPaths = SimulateStockPaths(S0, T, dT, mu, sig, N)
 %    http://www.investopedia.com/articles/07/montecarlo.asp
     t_size = round(T/dT);
@@ -116,7 +113,6 @@ function StockPaths = SimulateStockPaths(S0, T, dT, mu, sig, N)
     end           
 end
 
-
 function c = bsm_call(r, q, S0, K, T, sig)
     S0 = S0*exp(-q * T);
     d1 = (log(S0/K)+(r+(sig^2/2))*T)/(sig*sqrt(T));
@@ -128,10 +124,9 @@ function c = bsm_call(r, q, S0, K, T, sig)
 %     g = normpdf(d1)/(S0*sig*sqrt(T));
 end
 
-
 function r = RiskFreeRateInterpolation(t)
-    global risk_free_rate_interpolation;
-    global payments_per_year;
+     global risk_free_rate_interpolation;
+     global payments_per_year;
     t_in_months = round( t * payments_per_year);
     r = risk_free_rate_interpolation(t_in_months);
 end
