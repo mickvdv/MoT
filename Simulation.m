@@ -1,7 +1,7 @@
 format long g
 
 % simulation parameters
-N = 1000; % number of paths in Monte Carlo
+N = 500; % number of paths in Monte Carlo
 
 % for loading the basket
 filename = 'basket.xlsx';
@@ -17,13 +17,15 @@ T = 10;
 dT = 1/payments_per_year;
 
 % basket parameters
-S0 = 100;
-sig = 0.2;
-q = 0.01;
+S0 = 68.63;
+sig = 0.1567;
+q = 0.0203;
 
 CapRates = 1:0.025:1.5;
+% CapRates = [1.10];
 ParticipationRates = 0.2:0.025:1.2;
-r_stock = RiskFreeRateInterpolation(3/12);
+% ParticipationRates = [0.95];
+% r_stock = RiskFreeRateInterpolation(3/12);
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
 
 for cap_i = 1:size(CapRates,2)
@@ -45,7 +47,7 @@ for cap_i = 1:size(CapRates,2)
             K_short = S0 * cap_rate ^ (sim_T);
             ExpectedShortCallValue = bsm_call(r, q, S0, K_short, sim_T, sig);
 
-            amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
+            amount_of_stock = (premium * participation_rate) / S0;
 
 
     %         save prices and amounts
@@ -69,10 +71,12 @@ for cap_i = 1:size(CapRates,2)
 
         % Protection
         Protection = sum(BondFaceValues, 2);
-        protection_rate = Protection / (premium * payments_per_year * T)
+        protection_rate = Protection / (premium * payments_per_year * T);
         ProtectionRates(cap_i, participation_i) = protection_rate;
     end
 end
+
+% save('bonds.mat', 'BondFaceValues');
 
 hold on
 surf(ParticipationRates, CapRates, ProtectionRates);
@@ -80,13 +84,6 @@ title('Protection Rate');
 ylabel('Cap Rate');
 xlabel('Participation Rate');
 hold off
-
-function r = RiskFreeRateInterpolation(t)
-     global risk_free_rate_interpolation;
-     global payments_per_year;
-    t_in_months = round( t * payments_per_year);
-    r = risk_free_rate_interpolation(t_in_months);
-end
 
 
 
