@@ -27,9 +27,9 @@ r_stock = RiskFreeRateInterpolation(3/12);
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
 
 for cap_i = 1:size(CapRates,2)
-    cap_rate = CapRates(1, cap_i)
+    cap_rate = CapRates(1, cap_i);
     for participation_i = 1:size(ParticipationRates, 2)
-        participation_rate = ParticipationRates(participation_i)
+        participation_rate = ParticipationRates(participation_i);
         % calculate the call prices
         CallPrices = zeros(basket_size, T*payments_per_year);
         CallAmounts = zeros(basket_size, T*payments_per_year);
@@ -80,43 +80,6 @@ title('Protection Rate');
 ylabel('Cap Rate');
 xlabel('Participation Rate');
 hold off
-
-
-function e = ExpectedCallValueFromStockPaths(StockPaths, K, forwardT, dT, N)
-    t_index = round(forwardT/dT);
-    r = RiskFreeRateInterpolation(forwardT);
-    call_values = exp(-r * forwardT) * max(StockPaths(:, t_index) - K, 0);
-    e = sum(call_values)/N;
-end
-
-function e = ExpectedValueFromStockPaths(StockPaths, forwardT, dT, N)
-    t_index = round(forwardT/dT) + 1;
-    col_sum = sum(StockPaths, 1);
-    e = col_sum(t_index)/N;
-end
-    
-function StockPaths = SimulateStockPaths(S0, T, dT, mu, sig, N)
-%    http://www.investopedia.com/articles/07/montecarlo.asp
-    t_size = round(T/dT);
-    StockPaths = zeros(N, t_size);
-    StockPaths(:, 1) = S0;
-    for sim_i = 1:N
-        for step_i = 2:(T/dT) + 1 %(plus 1 is for the last month)
-            StockPaths(sim_i, step_i) = max(StockPaths(sim_i, step_i - 1) + (StockPaths(sim_i, step_i - 1) * (mu * dT + sig * randn() * sqrt(dT))), 0);
-        end
-    end           
-end
-
-function c = bsm_call(r, q, S0, K, T, sig)
-    S0 = S0*exp(-q * T);
-    d1 = (log(S0/K)+(r+(sig^2/2))*T)/(sig*sqrt(T));
-    d2 = d1 - sig*sqrt(T);
-    c = S0 * normcdf(d1) - K * exp(-r*T)*normcdf(d2);
-%     p = K * exp(-r*T)*normcdf(-d2)-S0*normcdf(-d1)
-%     dc = normcdf(d1);
-%     dp = normcdf(d1)-1;
-%     g = normpdf(d1)/(S0*sig*sqrt(T));
-end
 
 function r = RiskFreeRateInterpolation(t)
      global risk_free_rate_interpolation;
