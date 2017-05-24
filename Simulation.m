@@ -16,10 +16,10 @@ payments_per_year = 12;
 T = 10;
 dT = 1/payments_per_year;
 
-% load the basket
-% Array contents: (S0, sig, null, null, q)
-basket = xlsread(filename)
-basket_size = size(basket, 1);
+% basket parameters
+S0 = 100;
+sig = 0.2;
+q = 0.01;
 
 CapRates = 1:0.025:1.5;
 ParticipationRates = 0.2:0.025:1.2;
@@ -34,33 +34,27 @@ for cap_i = 1:size(CapRates,2)
         CallPrices = zeros(basket_size, T*payments_per_year);
         CallAmounts = zeros(basket_size, T*payments_per_year);
 
-        for stock_i = 1 : basket_size
-        %     for each stock
-            S0 = basket(stock_i, 1);
-            sig = basket(stock_i, 2);
-            q = basket(stock_i, 5);
 
-            for month_i = 1:(T/dT)
-                sim_T = T - (month_i - 1) * dT;
+        for month_i = 1:(T/dT)
+            sim_T = T - (month_i - 1) * dT;
 %                 sim_T = time left till maturity
-                r = RiskFreeRateInterpolation(sim_T);
-                
-        %         get the expected values of the calls
-                ExpectedLongCallValue = bsm_call(r, q, S0, S0, sim_T, sig);
-                K_short = S0 * cap_rate ^ (sim_T);
-                ExpectedShortCallValue = bsm_call(r, q, S0, K_short, sim_T, sig);
+            r = RiskFreeRateInterpolation(sim_T);
 
-                amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
-                
+    %         get the expected values of the calls
+            ExpectedLongCallValue = bsm_call(r, q, S0, S0, sim_T, sig);
+            K_short = S0 * cap_rate ^ (sim_T);
+            ExpectedShortCallValue = bsm_call(r, q, S0, K_short, sim_T, sig);
 
-        %         save prices and amounts
-                CallPrices(stock_i, month_i) = ExpectedLongCallValue * amount_of_stock - ExpectedShortCallValue * amount_of_stock;
-                CallAmounts(stock_i, month_i) = amount_of_stock;
+            amount_of_stock = (1/basket_size) * (premium * participation_rate) / S0;
 
-        %         calculated the expected value for next month
-                StockPaths = SimulateStockPaths(S0, dT, dT, r_stock - q, sig, N);
-                S0 = ExpectedValueFromStockPaths(StockPaths, dT, dT, N);     
-            end
+
+    %         save prices and amounts
+            CallPrices(stock_i, month_i) = ExpectedLongCallValue * amount_of_stock - ExpectedShortCallValue * amount_of_stock;
+            CallAmounts(stock_i, month_i) = amount_of_stock;
+
+    %         calculated the expected value for next month
+            StockPaths = SimulateStockPaths(S0, dT, dT, r_stock - q, sig, N);
+            S0 = ExpectedValueFromStockPaths(StockPaths, dT, dT, N);     
         end
 
         % Calculate the bonds
