@@ -20,7 +20,15 @@ idxValid = ~isnan(risk_free_rate);
 x = linspace(1,20*12,20*12);
 p = polyfit(x(idxValid),risk_free_rate(idxValid),3);
 
-risk_free_rate_interpolation = polyval(p,x)/100;
+risk_free_rate_interpolation = polyval(p,x);
 
+figure
+plot(x,risk_free_rate,'o')
+hold on
+plot(x,risk_free_rate_interpolation)
+xlabel('T (in months)');
+ylabel('Risk Free Rate (in %)');
+hold off
+risk_free_rate_interpolation = risk_free_rate_interpolation / 100;
 save('rfr.mat', 'risk_free_rate_interpolation');
 
