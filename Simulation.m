@@ -1,7 +1,7 @@
 format long g
 
 % simulation parameters
-N = 20;
+N = 500;
 
 % for loading the basket
 filename = 'basket.xlsx';
@@ -9,6 +9,8 @@ filename = 'basket.xlsx';
 % Load the most recent risk free interpolation
 load('rfr.mat', 'risk_free_rate_interpolation');
 global risk_free_rate_interpolation;
+
+r_stock = RiskFreeRateInterpolation(3/12);
 
 % product specifications
 premium = 150;
@@ -24,6 +26,8 @@ basket_size = size(basket, 1);
 
 CapRates = 1:0.025:1.5;
 ParticipationRates = 0.2:0.025:1.2;
+
+
 
 
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
@@ -46,7 +50,7 @@ for cap_i = 1:size(CapRates,2)
                 sim_T = T - (month_i - 1) * dT;
 %                 sim_T = time left till maturity
                 r = RiskFreeRateInterpolation(sim_T);
-                r_stock = RiskFreeRateInterpolation(3/12);
+
                 StockPaths = SimulateStockPaths(S0, sim_T, dT, r_stock - q, sig, N);
 
         %         get the expected values of the calls
