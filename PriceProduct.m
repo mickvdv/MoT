@@ -66,13 +66,14 @@ for day_i = 1:(size(StockPath, 2)-1)
 end
 
 figure
-subplot(4,1,1)       % add first plot in 2 x 1 grid
+subplot(4,1,1)
 plot(StockPath);
 yyaxis right
 xlabel('Time (in days)')
 plot(values);
+legend('Stock path', 'Product price');
 
-subplot(4,1,2)       % add second plot in 2 x 1 grid
+subplot(4,1,2)
 hold on
 plot(Deltas)
 plot(Gammas)

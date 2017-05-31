@@ -24,10 +24,10 @@ S0 = 68.63;
 sig = 0.1567;
 q = 0.0203;
 
-CapRates = 1:0.025:1.5;
-% CapRates = [1.10];
-ParticipationRates = 0.2:0.025:1.2;
-% ParticipationRates = [0.95];
+% CapRates = 1:0.025:1.5;
+CapRates = [1.10];
+% ParticipationRates = 0.2:0.025:1.2;
+ParticipationRates = [0.95];
 
 ProtectionRates = zeros(size(CapRates,2), size(ParticipationRates, 2));
 
