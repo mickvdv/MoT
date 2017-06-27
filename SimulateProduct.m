@@ -3,7 +3,7 @@ premium = 150;
 global payments_per_year;
 payments_per_year = 12;
 
-N = 5000;
+N = 1000;
 
 global T;
 T = 10;
@@ -20,12 +20,12 @@ load('rfr.mat', 'risk_free_rate_interpolation');
 global sig;
 global q;
 S0 = 68.63;
-sig = 0.1567;
+sig = 0.219;
 q = 0.0203;
 
 % pricing
 global r_stock;
-r_stock = 0.03;
+r_stock = q + 0.062;
 month_duration = 21; % trading days per month
 
 PayOffs = zeros(N,1);
@@ -55,20 +55,9 @@ for sim_i = 1:N
         ShortCallStrikes(1, month_i) = S0 * cap_rate ^ (sim_T);    
     end
 
-%     values = zeros(1, 10 * month_duration*payments_per_year);
-    day_i = 252*10;
-%     for day_i = 1:21:(size(StockPath, 2)-1)
-    %     day_i
-        S0 = StockPath(1, day_i);
+    S0 = StockPath(1, 252*10);
 
-         [present_value, Delta, Gamma, Theta, Vega, Rho] = CalculateProductPrice(S0, LongCallStrikes, LongCallAmounts, ShortCallStrikes, ShortCallAmounts, BondFaceValues, T - (day_i/(month_duration*payments_per_year)));
-%          values(1, day_i) = present_value;
-%          Deltas(1, day_i) = Delta;
-%          Gammas(1, day_i) = Gamma;
-%          Thetas(1, day_i) = Theta;
-%          Vegas(1, day_i) = Vega;
-%          Rhos(1, day_i) = Rho;
-%     end
+    [present_value, Delta, Gamma, Theta, Vega, Rho] = CalculateProductPrice(S0, LongCallStrikes, LongCallAmounts, ShortCallStrikes, ShortCallAmounts, BondFaceValues, T - (day_i/(month_duration*payments_per_year)));
 
     PayOffs(sim_i) = present_value / sum(BondFaceValues);
 end
